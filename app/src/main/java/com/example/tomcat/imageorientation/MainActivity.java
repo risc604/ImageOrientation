@@ -115,7 +115,7 @@ public class MainActivity extends AppCompatActivity
         textView = (TextView) findViewById(R.id.textView);
         Log.d(TAG, "initView()...");
 
-        //test
+        //test  teset 2 code
     }
 
     private void initControl()
