@@ -114,6 +114,8 @@ public class MainActivity extends AppCompatActivity
         imgView = (ImageView) findViewById(R.id.imageView);
         textView = (TextView) findViewById(R.id.textView);
         Log.d(TAG, "initView()...");
+
+        //test
     }
 
     private void initControl()
