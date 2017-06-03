@@ -2,26 +2,17 @@ package com.example.tomcat.imageorientation;
 
 import android.Manifest;
 import android.app.AlertDialog;
-import android.content.Context;
 import android.content.DialogInterface;
 import android.content.Intent;
 import android.content.pm.PackageManager;
-import android.database.Cursor;
 import android.graphics.Bitmap;
 import android.graphics.BitmapFactory;
-import android.graphics.Matrix;
 import android.media.ExifInterface;
 import android.net.Uri;
-import android.os.Environment;
-import android.os.SystemClock;
-import android.provider.CalendarContract;
-import android.provider.MediaStore;
-import android.provider.Settings;
 import android.support.annotation.NonNull;
 import android.support.v4.app.ActivityCompat;
 import android.support.v7.app.AppCompatActivity;
 import android.os.Bundle;
-import android.text.format.DateFormat;
 import android.util.Log;
 import android.view.View;
 import android.widget.ImageView;
@@ -30,21 +21,17 @@ import android.widget.Toast;
 
 import java.io.ByteArrayOutputStream;
 import java.io.File;
-import java.io.FileInputStream;
 import java.io.FileOutputStream;
 import java.io.IOException;
 import java.io.InputStream;
-import java.text.SimpleDateFormat;
 import java.util.Calendar;
-import java.util.Date;
 
-import static java.lang.String.format;
+import static com.example.tomcat.imageorientation.ImgFunction.*;
 
 public class MainActivity extends AppCompatActivity
 {
     private final static String TAG = MainActivity.class.getSimpleName();
     private final int REQUEST_CAMERA = 1;
-
 
     ImageView   imgView;
     TextView    textView;
@@ -176,7 +163,7 @@ public class MainActivity extends AppCompatActivity
         tmp[5] = mCal.get(Calendar.SECOND);
         tmp[6] = mCal.get(Calendar.WEEK_OF_MONTH);
 
-        return (format("%04d%02d%02d%02d%02d%02d",
+        return (String.format("%04d%02d%02d%02d%02d%02d",
                 tmp[0], tmp[1], tmp[2], tmp[3], tmp[4], tmp[5]) );
     }
 
@@ -220,8 +207,6 @@ public class MainActivity extends AppCompatActivity
             Bitmap tmpBMP = getPicFromBytes(mContent, null, scalMultip);
             Log.d(TAG,  "tmpBPM byte counts: " + tmpBMP.getByteCount() +
                     ", scalMultip: " + scalMultip);
-
-
 
             //Log.d(TAG, "resizeBitmap byte counts: " + tmpBMP.getByteCount());
             String fileName = currentDateTime() + ".jpg";
@@ -303,185 +288,6 @@ public class MainActivity extends AppCompatActivity
             return tmpBMP;
         }
         return null;
-    }
-
-    public static boolean needRotate(Context coNtext, String fileName) {
-        try {
-            ExifInterface exif = new ExifInterface(fileName);
-            int orientation = exif.getAttributeInt(
-                    ExifInterface.TAG_ORIENTATION,
-                    ExifInterface.ORIENTATION_UNDEFINED);
-            Log.d(TAG, "orientation is " + orientation);
-            switch (orientation) {
-                case ExifInterface.ORIENTATION_ROTATE_90:
-                    return true;
-                case ExifInterface.ORIENTATION_ROTATE_270:
-                    return true;
-                case ExifInterface.ORIENTATION_ROTATE_180:
-                    return true;
-            }
-
-            return false;
-        } catch (IOException e) {
-            e.printStackTrace();
-            return false;
-        }
-    }
-
-    private Bitmap rotateBitmap(Bitmap bitmap, int orientation) {
-
-        Matrix matrix = new Matrix();
-        switch (orientation) {
-            case ExifInterface.ORIENTATION_NORMAL:
-                return bitmap;
-            case ExifInterface.ORIENTATION_FLIP_HORIZONTAL:
-                matrix.setScale(-1, 1);
-                break;
-            case ExifInterface.ORIENTATION_ROTATE_180:
-                matrix.setRotate(180);
-                break;
-            case ExifInterface.ORIENTATION_FLIP_VERTICAL:
-                matrix.setRotate(180);
-                matrix.postScale(-1, 1);
-                break;
-            case ExifInterface.ORIENTATION_TRANSPOSE:
-                matrix.setRotate(90);
-                matrix.postScale(-1, 1);
-                break;
-            case ExifInterface.ORIENTATION_UNDEFINED:
-            case ExifInterface.ORIENTATION_ROTATE_90:
-                matrix.setRotate(90);
-                break;
-            case ExifInterface.ORIENTATION_TRANSVERSE:
-                matrix.setRotate(-90);
-                matrix.postScale(-1, 1);
-                break;
-            case ExifInterface.ORIENTATION_ROTATE_270:
-                matrix.setRotate(-90);
-                break;
-            //case ExifInterface.ORIENTATION_UNDEFINED:
-            //    matrix.setRotate(-90);
-            //    matrix.postScale(-1, 1);
-            //    break;
-            default:
-                return bitmap;
-        }
-        try {
-            Bitmap bmRotated = Bitmap.createBitmap(bitmap, 0, 0, bitmap.getWidth(), bitmap.getHeight(), matrix, true);
-            bitmap.recycle();
-            return bmRotated;
-        }
-        catch (OutOfMemoryError e) {
-            e.printStackTrace();
-            return null;
-        }
-    }
-
-    private Bitmap getOriententionBitmap(String filePath){
-        Bitmap myBitmap = null;
-        try
-        {
-            File f = new File(filePath);
-            ExifInterface exif = new ExifInterface(f.getPath());
-            int orientation = exif.getAttributeInt(ExifInterface.TAG_ORIENTATION, ExifInterface.ORIENTATION_NORMAL);
-
-            int angle = 0;
-
-            if (orientation == ExifInterface.ORIENTATION_ROTATE_90) {
-                angle = 90;
-            }
-            else if (orientation == ExifInterface.ORIENTATION_ROTATE_180) {
-                angle = 180;
-            }
-            else if (orientation == ExifInterface.ORIENTATION_ROTATE_270) {
-                angle = 270;
-            }
-
-            Matrix mat = new Matrix();
-            mat.postRotate(angle);
-
-            Bitmap bmp1 = BitmapFactory.decodeStream(new FileInputStream(f), null, null);
-            myBitmap = Bitmap.createBitmap(bmp1, 0, 0, bmp1.getWidth(), bmp1.getHeight(), mat, true);
-
-        }
-        catch (IOException e) {
-            Log.w("TAG", "-- Error in setting image");
-        }
-        catch(OutOfMemoryError oom) {
-            Log.w("TAG", "-- OOM Error in setting image");
-        }
-        return myBitmap;
-    }
-
-    private int getOrientation(Context context, Uri photoUri) {
-
-        Cursor cursor = context.getContentResolver().query(photoUri,
-                new String[] { MediaStore.Images.ImageColumns.ORIENTATION }, null, null, null);
-
-        Log.w(TAG, "getOrientation(), cursor.getCount(): " + cursor.getCount());
-        textView.setText("Count: " + cursor.getCount());
-        if (cursor == null || cursor.getCount() != 1) {
-            return 90;  //Assuming it was taken portrait
-        }
-
-        cursor.moveToFirst();
-        return cursor.getInt(0);
-    }
-
-    //public static Bitmap modifyOrientation(Bitmap bitmap, String image_absolute_path) throws IOException
-    private Bitmap modifyOrientation(Bitmap bitmap, String image_absolute_path) throws IOException
-    {
-        Log.w(TAG, "modifyOrientation(), image_absolute_path: " + image_absolute_path);
-        ExifInterface ei = new ExifInterface(image_absolute_path);
-        //int orientation = ei.getAttributeInt(   ExifInterface.TAG_ORIENTATION,
-        //                                        ExifInterface.ORIENTATION_NORMAL);
-
-        String orientString = ei.getAttribute(ExifInterface.TAG_ORIENTATION);
-        int orientation = orientString != null ? Integer.parseInt(orientString) :  ExifInterface.ORIENTATION_NORMAL;
-
-        Log.w(TAG, "modifyOrientation(), orientation: " + orientation);
-        textView.setText(textView.getText() + ", degree: " + orientation);
-        switch (orientation)
-        {
-            case ExifInterface.ORIENTATION_ROTATE_90:
-                return rotate(bitmap, 90);
-
-            case ExifInterface.ORIENTATION_ROTATE_180:
-                return rotate(bitmap, 180);
-
-            case ExifInterface.ORIENTATION_ROTATE_270:
-                return rotate(bitmap, 270);
-
-            case ExifInterface.ORIENTATION_FLIP_HORIZONTAL:
-                return flip(bitmap, true, false);
-
-            case ExifInterface.ORIENTATION_FLIP_VERTICAL:
-                return flip(bitmap, false, true);
-
-            case ExifInterface.ORIENTATION_UNDEFINED:
-                return rotate(bitmap, -90);
-
-
-            default:
-                return bitmap;
-        }
-    }
-
-    //public static Bitmap rotate(Bitmap bitmap, float degrees)
-    public static Bitmap rotate(Bitmap bitmap, float degrees)
-    {
-        Matrix matrix = new Matrix();
-        matrix.postRotate(degrees);
-
-        Log.w(TAG, "rotate(), degree: " + degrees);
-        return Bitmap.createBitmap(bitmap, 0, 0, bitmap.getWidth(), bitmap.getHeight(), matrix, true);
-    }
-
-    public static Bitmap flip(Bitmap bitmap, boolean horizontal, boolean vertical) {
-        Matrix matrix = new Matrix();
-        matrix.preScale(horizontal ? -1 : 1, vertical ? -1 : 1);
-        Log.w(TAG, "flip(),  matrix: " + matrix);
-        return Bitmap.createBitmap(bitmap, 0, 0, bitmap.getWidth(), bitmap.getHeight(), matrix, true);
     }
 
 
