@@ -2,9 +2,11 @@ package com.example.tomcat.imageorientation;
 
 import android.Manifest;
 import android.app.AlertDialog;
+import android.content.Context;
 import android.content.DialogInterface;
 import android.content.Intent;
 import android.content.pm.PackageManager;
+import android.database.Cursor;
 import android.graphics.Bitmap;
 import android.graphics.BitmapFactory;
 import android.graphics.Matrix;
@@ -13,6 +15,8 @@ import android.net.Uri;
 import android.os.Environment;
 import android.os.SystemClock;
 import android.provider.CalendarContract;
+import android.provider.MediaStore;
+import android.provider.Settings;
 import android.support.annotation.NonNull;
 import android.support.v4.app.ActivityCompat;
 import android.support.v7.app.AppCompatActivity;
@@ -26,11 +30,15 @@ import android.widget.Toast;
 
 import java.io.ByteArrayOutputStream;
 import java.io.File;
+import java.io.FileInputStream;
 import java.io.FileOutputStream;
 import java.io.IOException;
 import java.io.InputStream;
 import java.text.SimpleDateFormat;
 import java.util.Calendar;
+import java.util.Date;
+
+import static java.lang.String.format;
 
 public class MainActivity extends AppCompatActivity
 {
@@ -155,6 +163,24 @@ public class MainActivity extends AppCompatActivity
         dlg.show();
     }
 
+    private String currentDateTime()
+    {
+        Calendar    mCal = Calendar.getInstance();
+        int[]       tmp = new int[7];
+
+        tmp[0] = mCal.get(Calendar.YEAR);
+        tmp[1] = mCal.get(Calendar.MONTH)+1;
+        tmp[2] = mCal.get(Calendar.DATE);
+        tmp[3] = mCal.get(Calendar.HOUR_OF_DAY);
+        tmp[4] = mCal.get(Calendar.MINUTE);
+        tmp[5] = mCal.get(Calendar.SECOND);
+        tmp[6] = mCal.get(Calendar.WEEK_OF_MONTH);
+
+        return (format("%04d%02d%02d%02d%02d%02d",
+                tmp[0], tmp[1], tmp[2], tmp[3], tmp[4], tmp[5]) );
+    }
+
+
     private void getPhotoAlbum(Intent data)
     {
         byte[] mContent;
@@ -180,6 +206,8 @@ public class MainActivity extends AppCompatActivity
             // TODO: handle exception
         }*/
 
+        getOrientation(this, selectedImage);
+
         //方式二
         try
         {
@@ -193,14 +221,43 @@ public class MainActivity extends AppCompatActivity
             Log.d(TAG,  "tmpBPM byte counts: " + tmpBMP.getByteCount() +
                     ", scalMultip: " + scalMultip);
 
-            //Log.d(TAG, "resizeBitmap byte counts: " + tmpBMP.getByteCount());
-            String fileName = Environment.getExternalStorageState() + "/mt24hr/" + Calendar.getInstance();
-            FileOutputStream baos = new FileOutputStream(fileName);
-            tmpBMP.compress(Bitmap.CompressFormat.PNG, 100, baos);
-            baos.close();
-            Log.d(TAG, "getPhotoAlbum(), file name: " + fileName);
 
-            modifyOrientation(tmpBMP, fileName);
+
+            //Log.d(TAG, "resizeBitmap byte counts: " + tmpBMP.getByteCount());
+            String fileName = currentDateTime() + ".jpg";
+            Log.d(TAG, "getPhotoAlbum(), fileName: " + fileName);
+            String filePath = "/sdcard/mt24hr/" + fileName;
+            Log.d(TAG, "getPhotoAlbum(), file Path: " + filePath);
+            FileOutputStream baos = new FileOutputStream(filePath);
+            tmpBMP.compress(Bitmap.CompressFormat.JPEG, 100, baos);
+            baos.close();
+
+            boolean rotationFlag = needRotate(this, filePath);
+
+            File imgFile = new File(filePath);
+            Log.w(TAG, "imgFile size: " + imgFile.length() + " bytes, rotationFlag: " + rotationFlag);
+
+            //ExifInterface exif = null;
+            //try {
+            //    exif = new ExifInterface(filePath);
+            //} catch (IOException e) {
+            //    e.printStackTrace();
+            //}
+            //int orientation = exif.getAttributeInt(ExifInterface.TAG_ORIENTATION,
+            //        ExifInterface.ORIENTATION_UNDEFINED);
+
+            //Log.w(TAG, "111 orientation: " + orientation);
+            //tmpBMP = rotateBitmap(tmpBMP, orientation);
+
+            //tmpBMP = getOriententionBitmap(filePath);
+
+            //if (imgFile!=null) {
+            //    modifyOrientation(tmpBMP, imgFile.getAbsolutePath());
+            //}
+            //else
+            //{
+            //    Log.e(TAG, "Error!! NOT found image file in path: " + filePath);
+            //}
             imgView.setImageBitmap(tmpBMP);
         }
         catch (Exception e)
@@ -248,14 +305,142 @@ public class MainActivity extends AppCompatActivity
         return null;
     }
 
+    public static boolean needRotate(Context coNtext, String fileName) {
+        try {
+            ExifInterface exif = new ExifInterface(fileName);
+            int orientation = exif.getAttributeInt(
+                    ExifInterface.TAG_ORIENTATION,
+                    ExifInterface.ORIENTATION_UNDEFINED);
+            Log.d(TAG, "orientation is " + orientation);
+            switch (orientation) {
+                case ExifInterface.ORIENTATION_ROTATE_90:
+                    return true;
+                case ExifInterface.ORIENTATION_ROTATE_270:
+                    return true;
+                case ExifInterface.ORIENTATION_ROTATE_180:
+                    return true;
+            }
+
+            return false;
+        } catch (IOException e) {
+            e.printStackTrace();
+            return false;
+        }
+    }
+
+    private Bitmap rotateBitmap(Bitmap bitmap, int orientation) {
+
+        Matrix matrix = new Matrix();
+        switch (orientation) {
+            case ExifInterface.ORIENTATION_NORMAL:
+                return bitmap;
+            case ExifInterface.ORIENTATION_FLIP_HORIZONTAL:
+                matrix.setScale(-1, 1);
+                break;
+            case ExifInterface.ORIENTATION_ROTATE_180:
+                matrix.setRotate(180);
+                break;
+            case ExifInterface.ORIENTATION_FLIP_VERTICAL:
+                matrix.setRotate(180);
+                matrix.postScale(-1, 1);
+                break;
+            case ExifInterface.ORIENTATION_TRANSPOSE:
+                matrix.setRotate(90);
+                matrix.postScale(-1, 1);
+                break;
+            case ExifInterface.ORIENTATION_UNDEFINED:
+            case ExifInterface.ORIENTATION_ROTATE_90:
+                matrix.setRotate(90);
+                break;
+            case ExifInterface.ORIENTATION_TRANSVERSE:
+                matrix.setRotate(-90);
+                matrix.postScale(-1, 1);
+                break;
+            case ExifInterface.ORIENTATION_ROTATE_270:
+                matrix.setRotate(-90);
+                break;
+            //case ExifInterface.ORIENTATION_UNDEFINED:
+            //    matrix.setRotate(-90);
+            //    matrix.postScale(-1, 1);
+            //    break;
+            default:
+                return bitmap;
+        }
+        try {
+            Bitmap bmRotated = Bitmap.createBitmap(bitmap, 0, 0, bitmap.getWidth(), bitmap.getHeight(), matrix, true);
+            bitmap.recycle();
+            return bmRotated;
+        }
+        catch (OutOfMemoryError e) {
+            e.printStackTrace();
+            return null;
+        }
+    }
+
+    private Bitmap getOriententionBitmap(String filePath){
+        Bitmap myBitmap = null;
+        try
+        {
+            File f = new File(filePath);
+            ExifInterface exif = new ExifInterface(f.getPath());
+            int orientation = exif.getAttributeInt(ExifInterface.TAG_ORIENTATION, ExifInterface.ORIENTATION_NORMAL);
+
+            int angle = 0;
+
+            if (orientation == ExifInterface.ORIENTATION_ROTATE_90) {
+                angle = 90;
+            }
+            else if (orientation == ExifInterface.ORIENTATION_ROTATE_180) {
+                angle = 180;
+            }
+            else if (orientation == ExifInterface.ORIENTATION_ROTATE_270) {
+                angle = 270;
+            }
+
+            Matrix mat = new Matrix();
+            mat.postRotate(angle);
+
+            Bitmap bmp1 = BitmapFactory.decodeStream(new FileInputStream(f), null, null);
+            myBitmap = Bitmap.createBitmap(bmp1, 0, 0, bmp1.getWidth(), bmp1.getHeight(), mat, true);
+
+        }
+        catch (IOException e) {
+            Log.w("TAG", "-- Error in setting image");
+        }
+        catch(OutOfMemoryError oom) {
+            Log.w("TAG", "-- OOM Error in setting image");
+        }
+        return myBitmap;
+    }
+
+    private int getOrientation(Context context, Uri photoUri) {
+
+        Cursor cursor = context.getContentResolver().query(photoUri,
+                new String[] { MediaStore.Images.ImageColumns.ORIENTATION }, null, null, null);
+
+        Log.w(TAG, "getOrientation(), cursor.getCount(): " + cursor.getCount());
+        textView.setText("Count: " + cursor.getCount());
+        if (cursor == null || cursor.getCount() != 1) {
+            return 90;  //Assuming it was taken portrait
+        }
+
+        cursor.moveToFirst();
+        return cursor.getInt(0);
+    }
+
     //public static Bitmap modifyOrientation(Bitmap bitmap, String image_absolute_path) throws IOException
     private Bitmap modifyOrientation(Bitmap bitmap, String image_absolute_path) throws IOException
     {
+        Log.w(TAG, "modifyOrientation(), image_absolute_path: " + image_absolute_path);
         ExifInterface ei = new ExifInterface(image_absolute_path);
-        int orientation = ei.getAttributeInt(   ExifInterface.TAG_ORIENTATION,
-                                                ExifInterface.ORIENTATION_NORMAL);
+        //int orientation = ei.getAttributeInt(   ExifInterface.TAG_ORIENTATION,
+        //                                        ExifInterface.ORIENTATION_NORMAL);
+
+        String orientString = ei.getAttribute(ExifInterface.TAG_ORIENTATION);
+        int orientation = orientString != null ? Integer.parseInt(orientString) :  ExifInterface.ORIENTATION_NORMAL;
 
         Log.w(TAG, "modifyOrientation(), orientation: " + orientation);
+        textView.setText(textView.getText() + ", degree: " + orientation);
         switch (orientation)
         {
             case ExifInterface.ORIENTATION_ROTATE_90:
@@ -272,6 +457,10 @@ public class MainActivity extends AppCompatActivity
 
             case ExifInterface.ORIENTATION_FLIP_VERTICAL:
                 return flip(bitmap, false, true);
+
+            case ExifInterface.ORIENTATION_UNDEFINED:
+                return rotate(bitmap, -90);
+
 
             default:
                 return bitmap;
@@ -301,7 +490,7 @@ public class MainActivity extends AppCompatActivity
         Log.d(TAG, "getPhotoCameraTake() ...");
         Bitmap myBitmap = null;
         //imgFilePath += Utils.getPhotoFileName();
-        String tmpFileName = Calendar.getInstance().toString();
+        String tmpFileName = "/sdcard/mt24hr/" + currentDateTime() + ".jpg";
         File tempFile = new File(tmpFileName);
         //String filePath = "";
 
@@ -311,14 +500,27 @@ public class MainActivity extends AppCompatActivity
             Log.d(TAG, "camera extras: " + extras.toString());
 
             myBitmap = (Bitmap) extras.get("data");
-
             tempFile.createNewFile();
             FileOutputStream baos = new FileOutputStream(tempFile);
-            myBitmap.compress(Bitmap.CompressFormat.PNG, 100, baos);
+            myBitmap.compress(Bitmap.CompressFormat.JPEG, 100, baos);
             baos.close();
             Log.d(TAG, "camera tmpFileName: " + tmpFileName +
                     ", bmp size: " + myBitmap.getByteCount());
 
+            boolean rotationFlag = needRotate(this, tempFile.getAbsolutePath());
+            Log.d(TAG, "rotationFlag: " + rotationFlag);
+
+            ExifInterface exif = null;
+            try {
+                exif = new ExifInterface(tmpFileName);
+            } catch (IOException e) {
+                e.printStackTrace();
+            }
+            int orientation = exif.getAttributeInt(ExifInterface.TAG_ORIENTATION,
+                    ExifInterface.ORIENTATION_UNDEFINED);
+
+            Log.w(TAG, "222 orientation: " + orientation);
+            myBitmap = rotateBitmap(myBitmap, orientation);
             imgView.setImageBitmap((myBitmap));
         }
         catch (Exception e)

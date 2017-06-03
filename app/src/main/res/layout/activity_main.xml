@@ -8,8 +8,8 @@
 
     <ImageView
         android:id="@+id/imageView"
-        android:layout_width="368dp"
-        android:layout_height="541dp"
+        android:layout_width="372dp"
+        android:layout_height="573dp"
         android:contentDescription=""
         android:longClickable="false"
         android:onClick="imageOnClick"
@@ -17,18 +17,20 @@
         app:layout_constraintTop_toTopOf="parent"
         app:srcCompat="@android:color/background_light"
         tools:ignore="ContentDescription,MissingConstraints"
-        tools:layout_editor_absoluteX="8dp" />
+        tools:layout_editor_absoluteX="8dp"
+        app:layout_constraintVertical_bias="0.285"
+        android:layout_marginBottom="8dp" />
 
     <TextView
         android:id="@+id/textView"
-        android:layout_width="383dp"
-        android:layout_height="25dp"
+        android:layout_width="369dp"
+        android:layout_height="50dp"
         app:layout_constraintBottom_toBottomOf="parent"
-        app:layout_constraintHorizontal_bias="0.051"
         app:layout_constraintLeft_toLeftOf="parent"
         app:layout_constraintRight_toRightOf="parent"
         app:layout_constraintTop_toTopOf="parent"
-        app:layout_constraintVertical_bias="0.892"
-        tools:ignore="RtlHardcoded" />
+        app:layout_constraintVertical_bias="0.973"
+        tools:ignore="RtlHardcoded"
+        tools:layout_editor_absoluteX="11dp" />
 
 </android.support.constraint.ConstraintLayout>
