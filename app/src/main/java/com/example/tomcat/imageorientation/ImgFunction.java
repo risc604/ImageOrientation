@@ -10,6 +10,7 @@ import android.net.Uri;
 import android.provider.MediaStore;
 import android.util.Log;
 
+import java.io.ByteArrayOutputStream;
 import java.io.File;
 import java.io.FileInputStream;
 import java.io.IOException;
@@ -213,5 +214,87 @@ public class ImgFunction
         Log.w(TAG, "flip(),  matrix: " + matrix);
         return Bitmap.createBitmap(bitmap, 0, 0, bitmap.getWidth(), bitmap.getHeight(), matrix, true);
     }
+
+    //---
+    public static byte[] rotateImageIfRequired(Context context, Uri uri, byte[] fileBytes)
+    {
+        byte[] data = null;
+        Bitmap bitmap = BitmapFactory.decodeByteArray(fileBytes, 0, fileBytes.length);
+        ByteArrayOutputStream outputStream = null;
+
+        try
+        {
+            //bitmap = ImageResizer.rotateImageIfRequired(bitmap, context, uri);
+            bitmap = rotateImageIfRequired(bitmap, context, uri);
+            outputStream = new ByteArrayOutputStream();
+            bitmap.compress(Bitmap.CompressFormat.PNG, 100, outputStream);
+            data = outputStream.toByteArray();
+        }
+        catch (IOException e)
+        {
+            //Timber.e(e.getMessage());
+            e.printStackTrace();
+        }
+        finally
+        {
+            try
+            {
+                if (outputStream != null)
+                {
+                    outputStream.close();
+                }
+            }
+            catch (IOException e)
+            {
+                // Intentionally blank
+                e.printStackTrace();
+            }
+        }
+
+        return data;
+    }
+
+    public static Bitmap rotateImageIfRequired(Bitmap img, Context context, Uri selectedImage) throws IOException
+    {
+        if (selectedImage.getScheme().equals("content"))
+        {
+            String[] projection = { MediaStore.Images.ImageColumns.ORIENTATION };
+            Cursor c = context.getContentResolver().query(selectedImage, projection, null, null, null);
+            if (c.moveToFirst())
+            {
+                final int rotation = c.getInt(0);
+                c.close();
+                return rotateImage(img, rotation);
+            }
+            return img;
+        }
+        else
+        {
+            ExifInterface ei = new ExifInterface(selectedImage.getPath());
+            int orientation = ei.getAttributeInt(ExifInterface.TAG_ORIENTATION, ExifInterface.ORIENTATION_NORMAL);
+            //Timber.d("orientation: %s", orientation);
+            Log.d(TAG, "orientation: " + orientation);
+
+            switch (orientation)
+            {
+                case ExifInterface.ORIENTATION_ROTATE_90:
+                    return rotateImage(img, 90);
+                case ExifInterface.ORIENTATION_ROTATE_180:
+                    return rotateImage(img, 180);
+                case ExifInterface.ORIENTATION_ROTATE_270:
+                    return rotateImage(img, 270);
+                default:
+                    return img;
+            }
+        }
+    }
+
+    public static Bitmap rotateImage(Bitmap img, int degree) {
+        Matrix matrix = new Matrix();
+        matrix.postRotate(degree);
+        Bitmap rotatedImg = Bitmap.createBitmap(img, 0, 0, img.getWidth(), img.getHeight(), matrix, true);
+        return rotatedImg;
+    }
+
 
 }
