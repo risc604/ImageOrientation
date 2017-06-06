@@ -10,6 +10,7 @@ import android.database.Cursor;
 import android.graphics.Bitmap;
 import android.graphics.BitmapFactory;
 import android.graphics.Color;
+import android.graphics.Matrix;
 import android.media.ExifInterface;
 import android.net.Uri;
 import android.provider.MediaStore;
@@ -26,6 +27,7 @@ import android.widget.Toast;
 
 import java.io.ByteArrayOutputStream;
 import java.io.File;
+import java.io.FileNotFoundException;
 import java.io.FileOutputStream;
 import java.io.IOException;
 import java.io.InputStream;
@@ -206,33 +208,62 @@ public class MainActivity extends AppCompatActivity
         Bitmap testBMP = null;
         final int SCAL_BASE = (1024 * 800);
         Uri selectedImage = data.getData();
-        Log.d(TAG, "getPhotoAlbum(), album extras: " + selectedImage.toString());
+        Log.d(TAG, "getPhotoAlbum(), album extras: " + selectedImage.toString() +
+                ", selectedImage path: " + selectedImage.getPath());
+
+        if (data!= null)
+        {
+            String selectFilePath = ImageFilePath.getPath(this.getBaseContext(), selectedImage);
+            Log.d(TAG, "selectFilePath: " + selectFilePath);
+            //textView.setTextSize(16);
+            textView.setText(selectFilePath);
+            testBMP = ImgFunction.getOriententionBitmap(selectFilePath);
+            testBMP = getResizedBitmap(testBMP, 800, 600);
+
+            String fileName = currentDateTime() + ".png";
+            String filePath = "/sdcard/mt24hr/" + fileName;
+            Log.d(TAG, "getPhotoAlbum(), file Path: " + filePath);
+            FileOutputStream baos = null;
+            try
+            {
+                baos = new FileOutputStream(filePath);
+                testBMP.compress(Bitmap.CompressFormat.PNG, 100, baos);
+                baos.close();
+            }
+            catch (IOException e)
+            {
+                e.printStackTrace();
+            }
+
+
+        }
+        imgView.setImageBitmap(testBMP);
 
         //ContentResolver resolver = getContentResolver();
 
-        try
-        {
-            testBMP = MediaStore.Images.Media.getBitmap(getContentResolver(), selectedImage);
-            String[] filePathArrays = {"_data"};
-            //Cursor  cursor = resolver.query(selectedImage, filePathArrays, null, null, null);
-            CursorLoader cursorLoader = new CursorLoader(this.getBaseContext(),
-                    selectedImage, filePathArrays, null, null, null);
-            Cursor cursor = cursorLoader.loadInBackground();
-            if (cursor.getCount() != 0) {
-                cursor.moveToFirst();
-
-            //int arrayindex = cursor.getColumnIndexOrThrow(filePathArrays[0]);
-            String imgFilePath = cursor.getString(cursor.getColumnIndexOrThrow("_data"));
-                textView.setTextColor(Color.BLACK);
-                textView.setText(imgFilePath);
-            Log.d(TAG, "getPhotoAlbum(), imgFilePath: " + imgFilePath);
-            cursor.close();
-            }
-        }
-        catch (IOException e)
-        {
-            e.printStackTrace();
-        }
+        ///try
+        ///{
+        ///    testBMP = MediaStore.Images.Media.getBitmap(getContentResolver(), selectedImage);
+        ///    String[] filePathArrays = {"_data"};
+        ///    //Cursor  cursor = resolver.query(selectedImage, filePathArrays, null, null, null);
+        ///    CursorLoader cursorLoader = new CursorLoader(this.getBaseContext(),
+        ///            selectedImage, filePathArrays, null, null, null);
+        ///    Cursor cursor = cursorLoader.loadInBackground();
+        ///    if (cursor.getCount() != 0) {
+        ///        cursor.moveToFirst();
+        ///
+        ///    //int arrayindex = cursor.getColumnIndexOrThrow(filePathArrays[0]);
+        ///    String imgFilePath = cursor.getString(cursor.getColumnIndexOrThrow("_data"));
+        ///        textView.setTextColor(Color.BLACK);
+        ///        textView.setText(imgFilePath);
+        ///    Log.d(TAG, "getPhotoAlbum(), imgFilePath: " + imgFilePath);
+        ///    cursor.close();
+        ///    }
+        ///}
+        ///catch (IOException e)
+        ///{
+        ///    e.printStackTrace();
+        ///}
 
 
         ///try
@@ -273,9 +304,9 @@ public class MainActivity extends AppCompatActivity
         //}*/
 
 
-        int degree = ImgFunction.getOrientation(this, selectedImage);
-        Log.w(TAG, "uri get degree: " + degree);
-        imgView.setImageBitmap(testBMP);
+        //int degree = ImgFunction.getOrientation(this, selectedImage);
+        //Log.w(TAG, "uri get degree: " + degree);
+        //imgView.setImageBitmap(testBMP);
 
         /////方式二
         ///try
@@ -421,6 +452,23 @@ public class MainActivity extends AppCompatActivity
         }
         //myBitmap = ivPicture.setImageBitmap(myBitmap);
         //ivPicture.setImageBitmap(Utils.getRoundedShape(myBitmap));
+    }
+
+    public Bitmap getResizedBitmap(Bitmap bm, int newWidth, int newHeight)
+    {
+        int width = bm.getWidth();
+        int height = bm.getHeight();
+        float scaleWidth = ((float) newWidth) / width;
+        float scaleHeight = ((float) newHeight) / height;
+        // CREATE A MATRIX FOR THE MANIPULATION
+        Matrix matrix = new Matrix();
+        // RESIZE THE BIT MAP
+        matrix.postScale(scaleWidth, scaleHeight);
+
+        // "RECREATE" THE NEW BITMAP
+        Bitmap resizedBitmap = Bitmap.createBitmap(bm, 0, 0, width, height, matrix, false);
+        bm.recycle();
+        return resizedBitmap;
     }
 
 }
