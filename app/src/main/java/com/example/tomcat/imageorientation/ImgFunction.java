@@ -113,6 +113,8 @@ public class ImgFunction
             ExifInterface exif = new ExifInterface(f.getPath());
             int orientation = exif.getAttributeInt( ExifInterface.TAG_ORIENTATION,
                                                     ExifInterface.ORIENTATION_NORMAL);
+
+            Log.d(TAG, "orientation: " + orientation);
             int angle = 0;
             if (orientation == ExifInterface.ORIENTATION_ROTATE_90)
             {
