@@ -2,15 +2,20 @@ package com.example.tomcat.imageorientation;
 
 import android.Manifest;
 import android.app.AlertDialog;
+import android.content.ContentResolver;
 import android.content.DialogInterface;
 import android.content.Intent;
 import android.content.pm.PackageManager;
+import android.database.Cursor;
 import android.graphics.Bitmap;
 import android.graphics.BitmapFactory;
+import android.graphics.Color;
 import android.media.ExifInterface;
 import android.net.Uri;
+import android.provider.MediaStore;
 import android.support.annotation.NonNull;
 import android.support.v4.app.ActivityCompat;
+import android.support.v4.content.CursorLoader;
 import android.support.v7.app.AppCompatActivity;
 import android.os.Bundle;
 import android.util.Log;
@@ -32,6 +37,8 @@ public class MainActivity extends AppCompatActivity
 {
     private final static String TAG = MainActivity.class.getSimpleName();
     private final int REQUEST_CAMERA = 1;
+    private final int CAMERA_PHOTO = 1;
+    private final int ALBUM_PHOTO = 0;
 
     ImageView   imgView;
     TextView    textView;
@@ -40,9 +47,9 @@ public class MainActivity extends AppCompatActivity
     @Override
     protected void onCreate(Bundle savedInstanceState)
     {
+        Log.d(TAG, "onCreate() ...");
         super.onCreate(savedInstanceState);
         setContentView(R.layout.activity_main);
-        Log.d(TAG, "onCreate() ...");
 
         initView();
         initControl();
@@ -63,12 +70,16 @@ public class MainActivity extends AppCompatActivity
 
         switch (requestCode)
         {
-            case 0:     // 相冊取得圖片
-                getPhotoAlbum(data);
+            case CAMERA_PHOTO:     //拍照取得圖片
+                getCameraTake(data);
                 break;
 
-            case 1:     //拍照取得圖片
-                getPhotoCameraTake(data);
+            case ALBUM_PHOTO:     // 相冊取得圖片
+                getAlbumPhoto(data);
+                break;
+
+            default:
+                Log.e(TAG, "Error!! NO method to get photo.");
                 break;
         }
 
@@ -106,9 +117,9 @@ public class MainActivity extends AppCompatActivity
 
     private void initView()
     {
+        Log.d(TAG, "initView()...");
         imgView = (ImageView) findViewById(R.id.imageView);
         textView = (TextView) findViewById(R.id.textView);
-        Log.d(TAG, "initView()...");
 
         //test  teset 2 code
     }
@@ -120,7 +131,7 @@ public class MainActivity extends AppCompatActivity
 
     public void imageOnClick(View view)
     {
-        final CharSequence[] items = {"相册", "拍照"};
+        final CharSequence[] items = {"相 簿", "拍 照"};
         //final CharSequence[] items = {"Album", "Camera"};
 
         Log.d(TAG, "imageOnClick()...");
@@ -133,17 +144,36 @@ public class MainActivity extends AppCompatActivity
                         // TODO Auto-generated method stub
                         //這裡item是根據選擇的方式，
                         // 在items數據裡面定義了兩種方式，拍照的下標為1所以就調用拍照方法
-                        if (which == 1)
+                        ///if (which == 1)
+                        ///{
+                        ///    Intent getImageByCamera = new Intent("android.media.action.IMAGE_CAPTURE");
+                        ///    startActivityForResult(getImageByCamera, ALBUM_PHOTO);
+                        ///}
+                        ///else
+                        ///{
+                        ///    Intent getImage = new Intent(Intent.ACTION_GET_CONTENT);
+                        ///    getImage.addCategory(Intent.CATEGORY_OPENABLE);
+                        ///    getImage.setType("image/*");
+                        ///    startActivityForResult(getImage, CAMERA_PHOTO);
+                        ///}
+                        switch (which)
                         {
-                            Intent getImageByCamera = new Intent("android.media.action.IMAGE_CAPTURE");
-                            startActivityForResult(getImageByCamera, 1);
-                        }
-                        else
-                        {
-                            Intent getImage = new Intent(Intent.ACTION_GET_CONTENT);
-                            getImage.addCategory(Intent.CATEGORY_OPENABLE);
-                            getImage.setType("image/jpeg");
-                            startActivityForResult(getImage, 0);
+                            case ALBUM_PHOTO:
+                                Intent getImage = new Intent(Intent.ACTION_GET_CONTENT);
+                                getImage.addCategory(Intent.CATEGORY_OPENABLE);
+                                getImage.setType("image/*");
+                                startActivityForResult(getImage, ALBUM_PHOTO);
+                                break;
+
+                            case CAMERA_PHOTO:
+                                Intent getImageByCamera = new Intent("android.media.action.IMAGE_CAPTURE");
+                                startActivityForResult(getImageByCamera, CAMERA_PHOTO);
+                                break;
+
+                            default:
+                                Log.e(TAG, "Error!! no get photo method.");
+                                break;
+
                         }
                     }
                 }).create();
@@ -154,6 +184,7 @@ public class MainActivity extends AppCompatActivity
     {
         Calendar    mCal = Calendar.getInstance();
         int[]       tmp = new int[7];
+        Log.d(TAG, "currentDateTime()...");
 
         tmp[0] = mCal.get(Calendar.YEAR);
         tmp[1] = mCal.get(Calendar.MONTH)+1;
@@ -168,92 +199,144 @@ public class MainActivity extends AppCompatActivity
     }
 
 
-    private void getPhotoAlbum(Intent data)
+    private void getAlbumPhoto(Intent data)
     {
         byte[] mContent;
+        //String imgFilePath = "";
+        Bitmap testBMP = null;
         final int SCAL_BASE = (1024 * 800);
         Uri selectedImage = data.getData();
         Log.d(TAG, "getPhotoAlbum(), album extras: " + selectedImage.toString());
 
-        //方式一
-        /*try
-        {
-             //獲得圖片的uri
-            Uri orginalUri = data.getData();
-              //將圖片内容解析成字節數組
-            mContent = readStream(contentResolver.openInputStream(Uri.parse(orginalUri.toString())));
-             //將字節數組轉換為ImageView可調用的Bitmap對象
-            myBitmap  =getPicFromBytes(mContent,null);
-              ////把得到的圖片绑定在控件上顯示
-            imageView.setImageBitmap(myBitmap);
-        }
-        catch (Exception e)
-        {
-            e.printStackTrace();
-            // TODO: handle exception
-        }*/
+        //ContentResolver resolver = getContentResolver();
 
-        getOrientation(this, selectedImage);
-
-        //方式二
         try
         {
-            mContent = readStream(getApplication().getContentResolver()
-                    .openInputStream(Uri.parse(selectedImage.toString())));
-            Log.d(TAG, "album mContent: " + mContent.toString() + ", file length: " + mContent.length);
+            testBMP = MediaStore.Images.Media.getBitmap(getContentResolver(), selectedImage);
+            String[] filePathArrays = {"_data"};
+            //Cursor  cursor = resolver.query(selectedImage, filePathArrays, null, null, null);
+            CursorLoader cursorLoader = new CursorLoader(this.getBaseContext(),
+                    selectedImage, filePathArrays, null, null, null);
+            Cursor cursor = cursorLoader.loadInBackground();
+            if (cursor.getCount() != 0) {
+                cursor.moveToFirst();
 
-            //Bitmap tmpBMP = BitmapFactory.decodeFile(picturePath);
-            int scalMultip = mContent.length / SCAL_BASE;
-            Bitmap tmpBMP = getPicFromBytes(mContent, null, scalMultip);
-            Log.d(TAG,  "tmpBPM byte counts: " + tmpBMP.getByteCount() +
-                    ", scalMultip: " + scalMultip);
-
-            //Log.d(TAG, "resizeBitmap byte counts: " + tmpBMP.getByteCount());
-            String fileName = currentDateTime() + ".jpg";
-            Log.d(TAG, "getPhotoAlbum(), fileName: " + fileName);
-            String filePath = "/sdcard/mt24hr/" + fileName;
-            Log.d(TAG, "getPhotoAlbum(), file Path: " + filePath);
-            FileOutputStream baos = new FileOutputStream(filePath);
-            tmpBMP.compress(Bitmap.CompressFormat.JPEG, 100, baos);
-            baos.close();
-
-            boolean rotationFlag = needRotate(this, filePath);
-
-            File imgFile = new File(filePath);
-            Log.w(TAG, "imgFile size: " + imgFile.length() + " bytes, rotationFlag: " + rotationFlag);
-
-            //ExifInterface exif = null;
-            //try {
-            //    exif = new ExifInterface(filePath);
-            //} catch (IOException e) {
-            //    e.printStackTrace();
-            //}
-            //int orientation = exif.getAttributeInt(ExifInterface.TAG_ORIENTATION,
-            //        ExifInterface.ORIENTATION_UNDEFINED);
-
-            //Log.w(TAG, "111 orientation: " + orientation);
-            //tmpBMP = rotateBitmap(tmpBMP, orientation);
-
-            //tmpBMP = getOriententionBitmap(filePath);
-
-            //if (imgFile!=null) {
-            //    modifyOrientation(tmpBMP, imgFile.getAbsolutePath());
-            //}
-            //else
-            //{
-            //    Log.e(TAG, "Error!! NOT found image file in path: " + filePath);
-            //}
-            imgView.setImageBitmap(tmpBMP);
+            //int arrayindex = cursor.getColumnIndexOrThrow(filePathArrays[0]);
+            String imgFilePath = cursor.getString(cursor.getColumnIndexOrThrow("_data"));
+                textView.setTextColor(Color.BLACK);
+                textView.setText(imgFilePath);
+            Log.d(TAG, "getPhotoAlbum(), imgFilePath: " + imgFilePath);
+            cursor.close();
+            }
         }
-        catch (Exception e)
+        catch (IOException e)
         {
             e.printStackTrace();
         }
+
+
+        ///try
+        ///{
+        ///    testBMP = MediaStore.Images.Media.getBitmap(getContentResolver(), selectedImage);
+        ///    String[] filePathArrays = {MediaStore.Images.Media.DATA};
+        ///    //Cursor  cursor = resolver.query(selectedImage, filePathArrays, null, null, null);
+        ///    Cursor  cursor = getContentResolver().query(selectedImage, filePathArrays, null, null, null);
+        ///    cursor.moveToFirst();
+        ///
+        ///    int arrayindex = cursor.getColumnIndexOrThrow(filePathArrays[0]);
+        ///    imgFilePath = cursor.getString(arrayindex);
+        ///    textView.setText(imgFilePath);
+        ///    Log.d(TAG, "getPhotoAlbum(), arrayindex: " + arrayindex +
+        ///                ", imgFilePath: " + imgFilePath);
+        ///    cursor.close();
+        ///}
+        ///catch (IOException e)
+        ///{
+        ///    e.printStackTrace();
+        ///}
+        ////方式一
+        ///*try
+        //{
+        //     //獲得圖片的uri
+        //    Uri orginalUri = data.getData();
+        //      //將圖片内容解析成字節數組
+        //    mContent = readStream(contentResolver.openInputStream(Uri.parse(orginalUri.toString())));
+        //     //將字節數組轉換為ImageView可調用的Bitmap對象
+        //    myBitmap  =getPicFromBytes(mContent,null);
+        //      ////把得到的圖片绑定在控件上顯示
+        //    imageView.setImageBitmap(myBitmap);
+        //}
+        //catch (Exception e)
+        //{
+        //    e.printStackTrace();
+        //    // TODO: handle exception
+        //}*/
+
+
+        int degree = ImgFunction.getOrientation(this, selectedImage);
+        Log.w(TAG, "uri get degree: " + degree);
+        imgView.setImageBitmap(testBMP);
+
+        /////方式二
+        ///try
+        ///{
+        ///    mContent = readStream(getApplication().getContentResolver()
+        ///            .openInputStream(Uri.parse(selectedImage.toString())));
+        ///    Log.d(TAG, "album mContent: " + mContent.toString() + ", file length: " + mContent.length);
+        ///
+        ///    //Bitmap tmpBMP = BitmapFactory.decodeFile(picturePath);
+        ///    int scalMultip = mContent.length / SCAL_BASE;
+        ///    Bitmap tmpBMP = getPicFromBytes(mContent, null, scalMultip);
+        ///    Log.d(TAG,  "tmpBPM byte counts: " + tmpBMP.getByteCount() +
+        ///            ", scalMultip: " + scalMultip);
+        ///
+        ///    //Log.d(TAG, "resizeBitmap byte counts: " + tmpBMP.getByteCount());
+        ///    String fileName = currentDateTime() + ".jpg";
+        ///    Log.d(TAG, "getPhotoAlbum(), fileName: " + fileName);
+        ///    String filePath = "/sdcard/mt24hr/" + fileName;
+        ///    Log.d(TAG, "getPhotoAlbum(), file Path: " + filePath);
+        ///    FileOutputStream baos = new FileOutputStream(filePath);
+        ///    tmpBMP.compress(Bitmap.CompressFormat.JPEG, 100, baos);
+        ///    baos.close();
+        ///
+        ///    boolean rotationFlag = needRotate(this, filePath);
+        ///
+        ///    File imgFile = new File(filePath);
+        ///    Log.w(TAG, "imgFile size: " + imgFile.length() + " bytes, rotationFlag: " + rotationFlag);
+        ///
+        ///    //ExifInterface exif = null;
+        ///    //try {
+        ///    //    exif = new ExifInterface(filePath);
+        ///    //} catch (IOException e) {
+        ///    //    e.printStackTrace();
+        ///    //}
+        ///    //int orientation = exif.getAttributeInt(ExifInterface.TAG_ORIENTATION,
+        ///    //        ExifInterface.ORIENTATION_UNDEFINED);
+        ///
+        ///    //Log.w(TAG, "111 orientation: " + orientation);
+        ///    //tmpBMP = rotateBitmap(tmpBMP, orientation);
+        ///
+        ///    //tmpBMP = getOriententionBitmap(filePath);
+        ///
+        ///    //if (imgFile!=null) {
+        ///    //    modifyOrientation(tmpBMP, imgFile.getAbsolutePath());
+        ///    //}
+        ///    //else
+        ///    //{
+        ///    //    Log.e(TAG, "Error!! NOT found image file in path: " + filePath);
+        ///    //}
+        ///    imgView.setImageBitmap(tmpBMP);
+        ///}
+        ///catch (Exception e)
+        ///{
+        ///    e.printStackTrace();
+        ///}
     }
 
     public byte[] readStream(InputStream inStream) throws Exception
     {
         final int BUFFER_SIZE = 1024;
+        Log.d(TAG, "readStream()...");
 
         byte[] buffer = new byte[BUFFER_SIZE];
         int len = -1;
@@ -271,6 +354,7 @@ public class MainActivity extends AppCompatActivity
     public Bitmap getPicFromBytes(byte[] bytes, BitmapFactory.Options opts, int scalSize)
     {
         Bitmap tmpBMP;
+        Log.d(TAG, "getPicFromBytes()...");
 
         opts = new BitmapFactory.Options();
         opts.inSampleSize = scalSize;
@@ -291,13 +375,14 @@ public class MainActivity extends AppCompatActivity
     }
 
 
-    private void getPhotoCameraTake(Intent data)
+    private void getCameraTake(Intent data)
     {
         Log.d(TAG, "getPhotoCameraTake() ...");
         Bitmap myBitmap = null;
         //imgFilePath += Utils.getPhotoFileName();
         String tmpFileName = "/sdcard/mt24hr/" + currentDateTime() + ".jpg";
         File tempFile = new File(tmpFileName);
+        Log.d(TAG, "tmpFileName: " + tmpFileName);
         //String filePath = "";
 
         try
