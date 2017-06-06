@@ -235,7 +235,6 @@ public class MainActivity extends AppCompatActivity
                 e.printStackTrace();
             }
 
-
         }
         imgView.setImageBitmap(testBMP);
 
@@ -411,7 +410,7 @@ public class MainActivity extends AppCompatActivity
         Log.d(TAG, "getPhotoCameraTake() ...");
         Bitmap myBitmap = null;
         //imgFilePath += Utils.getPhotoFileName();
-        String tmpFileName = "/sdcard/mt24hr/" + currentDateTime() + ".jpg";
+        String tmpFileName = "/sdcard/mt24hr/" + currentDateTime() + ".png";
         File tempFile = new File(tmpFileName);
         Log.d(TAG, "tmpFileName: " + tmpFileName);
         //String filePath = "";
@@ -422,6 +421,8 @@ public class MainActivity extends AppCompatActivity
             Log.d(TAG, "camera extras: " + extras.toString());
 
             myBitmap = (Bitmap) extras.get("data");
+            myBitmap = = ImgFunction.rotateImageIfRequired(myBitmap, );
+
             tempFile.createNewFile();
             FileOutputStream baos = new FileOutputStream(tempFile);
             myBitmap.compress(Bitmap.CompressFormat.JPEG, 100, baos);
