@@ -5,15 +5,12 @@ import android.app.AlertDialog;
 import android.content.DialogInterface;
 import android.content.Intent;
 import android.content.pm.PackageManager;
-import android.database.Cursor;
 import android.graphics.Bitmap;
-import android.graphics.Color;
+import android.graphics.Matrix;
 import android.media.ExifInterface;
 import android.net.Uri;
-import android.provider.MediaStore;
 import android.support.annotation.NonNull;
 import android.support.v4.app.ActivityCompat;
-import android.support.v4.content.CursorLoader;
 import android.support.v7.app.AppCompatActivity;
 import android.os.Bundle;
 import android.util.Log;
@@ -27,7 +24,6 @@ import java.io.FileOutputStream;
 import java.io.IOException;
 import java.util.Calendar;
 
-import static com.example.tomcat.imageorientation.ImgFunction.*;
 
 public class MainActivity extends AppCompatActivity
 {
@@ -35,10 +31,12 @@ public class MainActivity extends AppCompatActivity
     private final int REQUEST_CAMERA = 1;
     private final int CAMERA_PHOTO = 1;
     private final int ALBUM_PHOTO = 0;
+    private final int IMG_WIDTH = 800;
+    private final int IMG_HEIGHT = 600;
+
 
     ImageView   imgView;
     TextView    textView;
-
 
     @Override
     protected void onCreate(Bundle savedInstanceState)
@@ -150,8 +148,8 @@ public class MainActivity extends AppCompatActivity
                                 break;
 
                             case CAMERA_PHOTO:
-                                Intent getImageByCamera = new Intent("android.media.action.IMAGE_CAPTURE");
-                                startActivityForResult(getImageByCamera, CAMERA_PHOTO);
+                                Intent getCamera = new Intent("android.media.action.IMAGE_CAPTURE");
+                                startActivityForResult(getCamera, CAMERA_PHOTO);
                                 break;
 
                             default:
@@ -185,34 +183,34 @@ public class MainActivity extends AppCompatActivity
     private void getAlbumPhoto(Intent data)
     {
         Bitmap testBMP = null;
-        final int SCAL_BASE = (1024 * 800);
+        //final int SCAL_BASE = (1024 * 800);
         Uri selectedImage = data.getData();
         Log.d(TAG, "getPhotoAlbum(), album extras: " + selectedImage.toString());
 
-        try
+        if (data!= null)
         {
-            testBMP = MediaStore.Images.Media.getBitmap(getContentResolver(), selectedImage);
-            String[] filePathArrays = {"_data"};
-            CursorLoader cursorLoader = new CursorLoader(this.getBaseContext(),
-                    selectedImage, filePathArrays, null, null, null);
-            Cursor cursor = cursorLoader.loadInBackground();
-            if (cursor.getCount() != 0)
+            String selectFilePath = ImageFilePath.getPath(this.getBaseContext(), selectedImage);
+            Log.d(TAG, "selectFilePath: " + selectFilePath);
+            //textView.setTextSize(16);
+            textView.setText(selectFilePath);
+            testBMP = ImgFunction.getOriententionBitmap(selectFilePath);
+            testBMP = getResizedBitmap(testBMP, IMG_WIDTH, IMG_WIDTH);
+
+            String fileName = currentDateTime() + ".png";
+            String filePath = "/sdcard/mt24hr/" + fileName;
+            Log.d(TAG, "getPhotoAlbum(), file Path: " + filePath);
+            FileOutputStream baos = null;
+            try
             {
-                cursor.moveToFirst();
-                String imgFilePath = cursor.getString(cursor.getColumnIndexOrThrow("_data"));
-                textView.setTextColor(Color.BLACK);
-                textView.setText(imgFilePath);
-                Log.d(TAG, "getPhotoAlbum(), imgFilePath: " + imgFilePath);
-                cursor.close();
+                baos = new FileOutputStream(filePath);
+                testBMP.compress(Bitmap.CompressFormat.PNG, 100, baos);
+                baos.close();
+            }
+            catch (IOException e)
+            {
+                e.printStackTrace();
             }
         }
-        catch (IOException e)
-        {
-            e.printStackTrace();
-        }
-
-        int degree = ImgFunction.getOrientation(this, selectedImage);
-        Log.w(TAG, "uri get degree: " + degree);
         imgView.setImageBitmap(testBMP);
     }
 
@@ -221,7 +219,7 @@ public class MainActivity extends AppCompatActivity
         Log.d(TAG, "getPhotoCameraTake() ...");
         Bitmap myBitmap = null;
         //imgFilePath += Utils.getPhotoFileName();
-        String tmpFileName = "/sdcard/mt24hr/" + currentDateTime() + ".jpg";
+        String tmpFileName = "/sdcard/mt24hr/" + currentDateTime() + ".png";
         File tempFile = new File(tmpFileName);
         Log.d(TAG, "tmpFileName: " + tmpFileName);
         //String filePath = "";
@@ -232,27 +230,21 @@ public class MainActivity extends AppCompatActivity
             Log.d(TAG, "camera extras: " + extras.toString());
 
             myBitmap = (Bitmap) extras.get("data");
+            Uri bmpUri = data.getData();
+            Log.d(TAG, "bmpUri: " + bmpUri);
+            myBitmap = ImgFunction.rotateImageIfRequired(myBitmap, this.getBaseContext(),bmpUri);
+            //myBitmap = getResizedBitmap(myBitmap, IMG_WIDTH, IMG_HEIGHT);
+            myBitmap = resize(myBitmap, IMG_WIDTH, IMG_HEIGHT);
             tempFile.createNewFile();
             FileOutputStream baos = new FileOutputStream(tempFile);
-            myBitmap.compress(Bitmap.CompressFormat.JPEG, 100, baos);
+            myBitmap.compress(Bitmap.CompressFormat.PNG, 100, baos);
             baos.close();
-            Log.d(TAG, "camera tmpFileName: " + tmpFileName +
-                    ", bmp size: " + myBitmap.getByteCount());
+            //Log.d(TAG, "camera tmpFileName: " + tmpFileName +
+            //        ", bmp size: " + myBitmap.getByteCount());
 
-            boolean rotationFlag = needRotate(this, tempFile.getAbsolutePath());
-            Log.d(TAG, "rotationFlag: " + rotationFlag);
+            //boolean rotationFlag = needRotate(this, tempFile.getAbsolutePath());
+            //Log.d(TAG, "rotationFlag: " + rotationFlag);
 
-            ExifInterface exif = null;
-            try {
-                exif = new ExifInterface(tmpFileName);
-            } catch (IOException e) {
-                e.printStackTrace();
-            }
-            int orientation = exif.getAttributeInt(ExifInterface.TAG_ORIENTATION,
-                    ExifInterface.ORIENTATION_UNDEFINED);
-
-            Log.w(TAG, "222 orientation: " + orientation);
-            myBitmap = rotateBitmap(myBitmap, orientation);
             imgView.setImageBitmap((myBitmap));
         }
         catch (Exception e)
@@ -264,5 +256,45 @@ public class MainActivity extends AppCompatActivity
         //ivPicture.setImageBitmap(Utils.getRoundedShape(myBitmap));
     }
 
+    public Bitmap getResizedBitmap(Bitmap bm, int newWidth, int newHeight)
+    {
+        int width = bm.getWidth();
+        int height = bm.getHeight();
+        float scaleWidth = ((float) newWidth) / width;
+        float scaleHeight = ((float) newHeight) / height;
+        // CREATE A MATRIX FOR THE MANIPULATION
+        Matrix matrix = new Matrix();
+        // RESIZE THE BIT MAP
+        matrix.postScale(scaleWidth, scaleHeight);
+
+        // "RECREATE" THE NEW BITMAP
+        Bitmap resizedBitmap = Bitmap.createBitmap(bm, 0, 0, width, height, matrix, false);
+        bm.recycle();
+        return resizedBitmap;
+    }
+
+    private Bitmap resize(Bitmap image, int maxWidth, int maxHeight) {
+        if (maxHeight > 0 && maxWidth > 0) {
+            int width = image.getWidth();
+            int height = image.getHeight();
+            float ratioBitmap = (float) width / (float) height;
+            float ratioMax = (float) maxWidth / (float) maxHeight;
+
+            int finalWidth = maxWidth;
+            int finalHeight = maxHeight;
+            if (ratioMax > 1) {
+                finalWidth = (int) ((float)maxHeight * ratioBitmap);
+            } else {
+                finalHeight = (int) ((float)maxWidth / ratioBitmap);
+            }
+            image = Bitmap.createScaledBitmap(image, finalWidth, finalHeight, true);
+            return image;
+        } else {
+            return image;
+        }
+    }
+
 }
+
+
 

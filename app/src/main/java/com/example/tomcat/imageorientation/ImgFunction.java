@@ -265,6 +265,8 @@ public class ImgFunction
             if (c.moveToFirst())
             {
                 final int rotation = c.getInt(0);
+                Log.w(TAG, "rotation: " + rotation);
+
                 c.close();
                 return rotateImage(img, rotation);
             }
