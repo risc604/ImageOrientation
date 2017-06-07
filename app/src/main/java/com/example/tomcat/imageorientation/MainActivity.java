@@ -194,22 +194,10 @@ public class MainActivity extends AppCompatActivity
             //textView.setTextSize(16);
             textView.setText(selectFilePath);
             testBMP = ImgFunction.getOriententionBitmap(selectFilePath);
-            testBMP = getResizedBitmap(testBMP, IMG_WIDTH, IMG_WIDTH);
+            //testBMP = getResizedBitmap(testBMP, IMG_WIDTH, IMG_WIDTH);
+            testBMP = resize(testBMP, IMG_WIDTH, IMG_WIDTH);
 
-            String fileName = currentDateTime() + ".png";
-            String filePath = "/sdcard/mt24hr/" + fileName;
-            Log.d(TAG, "getPhotoAlbum(), file Path: " + filePath);
-            FileOutputStream baos = null;
-            try
-            {
-                baos = new FileOutputStream(filePath);
-                testBMP.compress(Bitmap.CompressFormat.PNG, 100, baos);
-                baos.close();
-            }
-            catch (IOException e)
-            {
-                e.printStackTrace();
-            }
+            saveImagePNGFile(testBMP);
         }
         imgView.setImageBitmap(testBMP);
     }
@@ -219,9 +207,9 @@ public class MainActivity extends AppCompatActivity
         Log.d(TAG, "getPhotoCameraTake() ...");
         Bitmap myBitmap = null;
         //imgFilePath += Utils.getPhotoFileName();
-        String tmpFileName = "/sdcard/mt24hr/" + currentDateTime() + ".png";
-        File tempFile = new File(tmpFileName);
-        Log.d(TAG, "tmpFileName: " + tmpFileName);
+        //String tmpFileName = "/sdcard/mt24hr/" + currentDateTime() + ".png";
+        //File tempFile = new File(tmpFileName);
+        //Log.d(TAG, "tmpFileName: " + tmpFileName);
         //String filePath = "";
 
         try
@@ -232,18 +220,16 @@ public class MainActivity extends AppCompatActivity
             myBitmap = (Bitmap) extras.get("data");
             Uri bmpUri = data.getData();
             Log.d(TAG, "bmpUri: " + bmpUri);
-            myBitmap = ImgFunction.rotateImageIfRequired(myBitmap, this.getBaseContext(),bmpUri);
-            //myBitmap = getResizedBitmap(myBitmap, IMG_WIDTH, IMG_HEIGHT);
+            myBitmap = ImgFunction.rotateImageIfRequired(myBitmap, this.getBaseContext(), bmpUri);
             myBitmap = resize(myBitmap, IMG_WIDTH, IMG_HEIGHT);
-            tempFile.createNewFile();
-            FileOutputStream baos = new FileOutputStream(tempFile);
-            myBitmap.compress(Bitmap.CompressFormat.PNG, 100, baos);
-            baos.close();
-            //Log.d(TAG, "camera tmpFileName: " + tmpFileName +
-            //        ", bmp size: " + myBitmap.getByteCount());
-
-            //boolean rotationFlag = needRotate(this, tempFile.getAbsolutePath());
-            //Log.d(TAG, "rotationFlag: " + rotationFlag);
+            String tmpFileName = saveImagePNGFile(myBitmap);
+            //tempFile.createNewFile();
+            //FileOutputStream baos = new FileOutputStream(tempFile);
+            //myBitmap.compress(Bitmap.CompressFormat.PNG, 100, baos);
+            //baos.close();
+            textView.setText(tmpFileName);
+            Log.d(TAG, "camera tmpFileName: " + tmpFileName +
+                    ", bmp size: " + myBitmap.getByteCount() + " bytes");
 
             imgView.setImageBitmap((myBitmap));
         }
@@ -254,23 +240,6 @@ public class MainActivity extends AppCompatActivity
         }
         //myBitmap = ivPicture.setImageBitmap(myBitmap);
         //ivPicture.setImageBitmap(Utils.getRoundedShape(myBitmap));
-    }
-
-    public Bitmap getResizedBitmap(Bitmap bm, int newWidth, int newHeight)
-    {
-        int width = bm.getWidth();
-        int height = bm.getHeight();
-        float scaleWidth = ((float) newWidth) / width;
-        float scaleHeight = ((float) newHeight) / height;
-        // CREATE A MATRIX FOR THE MANIPULATION
-        Matrix matrix = new Matrix();
-        // RESIZE THE BIT MAP
-        matrix.postScale(scaleWidth, scaleHeight);
-
-        // "RECREATE" THE NEW BITMAP
-        Bitmap resizedBitmap = Bitmap.createBitmap(bm, 0, 0, width, height, matrix, false);
-        bm.recycle();
-        return resizedBitmap;
     }
 
     private Bitmap resize(Bitmap image, int maxWidth, int maxHeight) {
@@ -292,6 +261,25 @@ public class MainActivity extends AppCompatActivity
         } else {
             return image;
         }
+    }
+
+    private String saveImagePNGFile(Bitmap image)
+    {
+        String fileName = currentDateTime() + ".png";
+        String filePath = "/sdcard/mt24hr/" + fileName;
+        Log.d(TAG, "getPhotoAlbum(), file Path: " + filePath);
+        FileOutputStream baos = null;
+        try
+        {
+            baos = new FileOutputStream(filePath);
+            image.compress(Bitmap.CompressFormat.PNG, 100, baos);
+            baos.close();
+        }
+        catch (IOException e)
+        {
+            e.printStackTrace();
+        }
+        return filePath;
     }
 
 }
