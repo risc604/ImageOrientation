@@ -1,5 +1,6 @@
 package com.example.tomcat.imageorientation;
 
+import android.content.ContentResolver;
 import android.content.Context;
 import android.database.Cursor;
 import android.graphics.Bitmap;
@@ -7,11 +8,14 @@ import android.graphics.BitmapFactory;
 import android.graphics.Matrix;
 import android.media.ExifInterface;
 import android.net.Uri;
+import android.os.Build;
 import android.provider.MediaStore;
+import android.text.TextUtils;
 import android.util.Log;
 
 import java.io.File;
 import java.io.FileInputStream;
+import java.io.FileNotFoundException;
 import java.io.IOException;
 
 /**
@@ -112,6 +116,175 @@ public class ImgFunction
         matrix.postRotate(degree);
         Bitmap rotatedImg = Bitmap.createBitmap(img, 0, 0, img.getWidth(), img.getHeight(), matrix, true);
         return rotatedImg;
+    }
+
+    public static int getOrientention(String filePath)
+    {
+        File f = new File(filePath);
+        ExifInterface exif = null;
+        try {
+            exif = new ExifInterface(f.getPath());
+        }
+        catch (IOException e)
+        {
+            e.printStackTrace();
+        }
+
+        int orientation = exif.getAttributeInt( ExifInterface.TAG_ORIENTATION,
+                ExifInterface.ORIENTATION_NORMAL);
+
+        Log.d(TAG, "orientation: " + orientation);
+
+        int angle = 0;
+
+        switch (orientation)
+        {
+            case ExifInterface.ORIENTATION_ROTATE_90:
+                angle = 90;
+                break;
+
+            case ExifInterface.ORIENTATION_ROTATE_180:
+                angle = 180;
+                break;
+            case ExifInterface.ORIENTATION_ROTATE_270:
+                angle = 270;
+                break;
+
+            default:
+                Log.e(TAG, "Error !! orientation: " + orientation);
+                break;
+        }
+
+        return angle;
+    }
+
+    public static Bitmap resizeBitmap(Uri uri, Context context)
+    {
+        ContentResolver cr = context.getContentResolver();
+        Bitmap bitmap = null;
+        BitmapFactory.Options option = new BitmapFactory.Options();
+        option.inJustDecodeBounds = true; //只取bitmap的長寬，不取得整張bitmap
+
+        try
+        {
+            bitmap = BitmapFactory.decodeStream(cr.openInputStream(uri), null, option);
+        }
+        catch (FileNotFoundException e1)
+        {
+            e1.printStackTrace();
+        }
+
+        final int newSize = 300;
+        int width = option.outWidth;
+        int height = option.outHeight;
+        int scale = 1;
+        while (true)
+        {
+            if ((width / 4 < newSize) || (height / 4 < newSize))
+                break;
+            width /= 4;
+            height /= 4;
+            scale++;
+        }
+
+        option = new BitmapFactory.Options();
+        option.inSampleSize = scale;
+        //經過resize後才把bitmap整張圖取出來
+        try
+        {
+            bitmap = BitmapFactory.decodeStream(cr.openInputStream(uri), null, option);
+        }
+        catch (FileNotFoundException e)
+        {
+            e.printStackTrace();
+        }
+
+        return bitmap;
+
+    }
+
+    public static int sizeOf(Bitmap data) {
+        if (Build.VERSION.SDK_INT < Build.VERSION_CODES.HONEYCOMB_MR1) {
+            return data.getRowBytes() * data.getHeight();
+        } else if (Build.VERSION.SDK_INT< Build.VERSION_CODES.KITKAT){
+            return data.getByteCount();
+        } else{
+            return data.getAllocationByteCount();
+        }
+    }
+
+    public static int calculateInSampleSize(BitmapFactory.Options options, int reqWidth, int reqHeight)
+    {
+        final int height = options.outHeight;
+        final int width = options.outWidth;
+        int inSampleSize = 1;
+        Log.i(TAG, "height: " + height);
+        Log.i(TAG, "width: " + width);
+        if (height > reqHeight || width > reqWidth) {
+
+            final int halfHeight = height / 2;
+            final int halfWidth = width / 2;
+
+            while ((halfHeight / inSampleSize) > reqHeight && (halfWidth / inSampleSize) > reqWidth)
+            {
+                inSampleSize *= 2;
+            }
+
+            long totalPixels = width * height / inSampleSize;
+
+            final long totalReqPixelsCap = reqWidth * reqHeight * 2;
+
+            while (totalPixels > totalReqPixelsCap)
+            {
+                inSampleSize *= 2;
+                totalPixels /= 2;
+            }
+        }
+        return inSampleSize;
+    }
+
+    public static Bitmap decodeBitmapFromFile(String imagePath, int requestWidth, int requestHeight)
+    {
+        if (!TextUtils.isEmpty(imagePath))
+        {
+            Log.i(TAG, "requestWidth: " + requestWidth);
+            Log.i(TAG, "requestHeight: " + requestHeight);
+            if (requestWidth <= 0 || requestHeight <= 0) {
+                Bitmap bitmap = BitmapFactory.decodeFile(imagePath);
+                return bitmap;
+            }
+            BitmapFactory.Options options = new BitmapFactory.Options();
+            options.inJustDecodeBounds = true;//不加载图片到内存，仅获得图片宽高
+            BitmapFactory.decodeFile(imagePath, options);
+            Log.i(TAG, "original height: " + options.outHeight);
+            Log.i(TAG, "original width: " + options.outWidth);
+            if (options.outHeight == -1 || options.outWidth == -1)
+            {
+                try
+                {
+                    ExifInterface exifInterface = new ExifInterface(imagePath);
+                    int height = exifInterface.getAttributeInt(ExifInterface.TAG_IMAGE_LENGTH, ExifInterface.ORIENTATION_NORMAL);//获取图片的高度
+                    int width = exifInterface.getAttributeInt(ExifInterface.TAG_IMAGE_WIDTH, ExifInterface.ORIENTATION_NORMAL);//获取图片的宽度
+                    Log.i(TAG, "exif height: " + height);
+                    Log.i(TAG, "exif width: " + width);
+                    options.outWidth = width;
+                    options.outHeight = height;
+                }
+                catch (IOException e)
+                {
+                    e.printStackTrace();
+                }
+            }
+            options.inSampleSize = calculateInSampleSize(options, requestWidth, requestHeight); //计算获取新的采样率
+            Log.i(TAG, "inSampleSize: " + options.inSampleSize);
+            options.inJustDecodeBounds = false;
+            return BitmapFactory.decodeFile(imagePath, options);
+
+        }
+        else
+        {
+            return null;
+        }
     }
 
     //public static boolean needRotate(Context coNtext, String fileName)
