@@ -55,6 +55,7 @@ public class ImgFunction
             Bitmap bmp1 = BitmapFactory.decodeStream(new FileInputStream(f), null, null);
             myBitmap = Bitmap.createBitmap( bmp1, 0, 0, bmp1.getWidth(),
                     bmp1.getHeight(), mat, true);
+            Log.d(TAG, "myBitmap: " + myBitmap.getByteCount() + " bytes.");
         }
         catch (IOException e)
         {

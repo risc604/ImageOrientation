@@ -20,6 +20,7 @@ import android.widget.TextView;
 import android.widget.Toast;
 
 import java.io.File;
+import java.io.FileInputStream;
 import java.io.FileOutputStream;
 import java.io.IOException;
 import java.util.Calendar;
@@ -195,6 +196,35 @@ public class MainActivity extends AppCompatActivity
             testBMP = resize(testBMP, IMG_WIDTH, IMG_WIDTH);
 
             pngPathName = saveImagePNGFile(testBMP);
+
+            Log.d(TAG, "photo saved file: " + pngPathName +
+                    ", size: " + testBMP.getByteCount() + " bytes");
+            textView.setText(pngPathName);
+            imgView.setImageBitmap(testBMP);
+        }
+        else
+        {
+            Log.e(TAG, "Error!! data is NULL.");
+        }
+
+    }
+
+
+    private void getAlbumPhoto_old(Intent data)
+    {
+        Bitmap testBMP = null;
+        String pngPathName = "";
+        Uri selectedImage = data.getData();
+        Log.d(TAG, "getPhotoAlbum(), album extras: " + selectedImage.toString());
+
+        if (data!= null)
+        {
+            String selectFilePath = ImageFilePath.getPath(this.getBaseContext(), selectedImage);
+            Log.d(TAG, "selectFilePath: " + selectFilePath);
+            testBMP = ImgFunction.getOriententionBitmap(selectFilePath);
+            testBMP = resize(testBMP, IMG_WIDTH, IMG_WIDTH);
+
+            pngPathName = saveImagePNGFile(testBMP);
             Log.d(TAG, "photo saved file: " + pngPathName +
                         ", size: " + testBMP.getByteCount() + " bytes");
             textView.setText(pngPathName);
@@ -239,8 +269,10 @@ public class MainActivity extends AppCompatActivity
         }
     }
 
-    private Bitmap resize(Bitmap image, int maxWidth, int maxHeight) {
-        if (maxHeight > 0 && maxWidth > 0) {
+    private Bitmap resize(Bitmap image, int maxWidth, int maxHeight)
+    {
+        if (maxHeight > 0 && maxWidth > 0)
+        {
             int width = image.getWidth();
             int height = image.getHeight();
             float ratioBitmap = (float) width / (float) height;
@@ -250,15 +282,21 @@ public class MainActivity extends AppCompatActivity
             int finalHeight = maxHeight;
             if (ratioMax > 1) {
                 finalWidth = (int) ((float)maxHeight * ratioBitmap);
-            } else {
+            }
+            else
+            {
                 finalHeight = (int) ((float)maxWidth / ratioBitmap);
             }
             image = Bitmap.createScaledBitmap(image, finalWidth, finalHeight, true);
             return image;
-        } else {
+        }
+        else
+        {
             return image;
         }
     }
+
+
 
     private String saveImagePNGFile(Bitmap image)
     {
