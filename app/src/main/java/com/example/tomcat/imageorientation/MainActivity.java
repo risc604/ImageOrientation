@@ -183,7 +183,7 @@ public class MainActivity extends AppCompatActivity
     private void getAlbumPhoto(Intent data)
     {
         Bitmap testBMP = null;
-        //final int SCAL_BASE = (1024 * 800);
+        String pngPathName = "";
         Uri selectedImage = data.getData();
         Log.d(TAG, "getPhotoAlbum(), album extras: " + selectedImage.toString());
 
@@ -191,55 +191,52 @@ public class MainActivity extends AppCompatActivity
         {
             String selectFilePath = ImageFilePath.getPath(this.getBaseContext(), selectedImage);
             Log.d(TAG, "selectFilePath: " + selectFilePath);
-            //textView.setTextSize(16);
-            textView.setText(selectFilePath);
             testBMP = ImgFunction.getOriententionBitmap(selectFilePath);
-            //testBMP = getResizedBitmap(testBMP, IMG_WIDTH, IMG_WIDTH);
             testBMP = resize(testBMP, IMG_WIDTH, IMG_WIDTH);
 
-            saveImagePNGFile(testBMP);
+            pngPathName = saveImagePNGFile(testBMP);
+            Log.d(TAG, "photo saved file: " + pngPathName +
+                        ", size: " + testBMP.getByteCount() + " bytes");
+            textView.setText(pngPathName);
+            imgView.setImageBitmap(testBMP);
         }
-        imgView.setImageBitmap(testBMP);
+        else
+        {
+            Log.e(TAG, "Error!! data is NULL.");
+        }
+
     }
 
     private void getCameraTake(Intent data)
     {
         Log.d(TAG, "getPhotoCameraTake() ...");
         Bitmap myBitmap = null;
-        //imgFilePath += Utils.getPhotoFileName();
-        //String tmpFileName = "/sdcard/mt24hr/" + currentDateTime() + ".png";
-        //File tempFile = new File(tmpFileName);
-        //Log.d(TAG, "tmpFileName: " + tmpFileName);
-        //String filePath = "";
+        String pngPathName = "";
 
         try
         {
-            Bundle extras = data.getExtras();
-            Log.d(TAG, "camera extras: " + extras.toString());
-
-            myBitmap = (Bitmap) extras.get("data");
+            //Bundle extras = data.getExtras();
+            //myBitmap = (Bitmap) extras.get("data");
+            myBitmap = (Bitmap) data.getExtras().get("data");
             Uri bmpUri = data.getData();
-            Log.d(TAG, "bmpUri: " + bmpUri);
+            Log.d(TAG,  "camera extras: " + data.getExtras().toString() +
+                        ", bmpUri: " + bmpUri +
+                        ", raw data in memory size: " + myBitmap.getByteCount());
             myBitmap = ImgFunction.rotateImageIfRequired(myBitmap, this.getBaseContext(), bmpUri);
             myBitmap = resize(myBitmap, IMG_WIDTH, IMG_HEIGHT);
-            String tmpFileName = saveImagePNGFile(myBitmap);
-            //tempFile.createNewFile();
-            //FileOutputStream baos = new FileOutputStream(tempFile);
-            //myBitmap.compress(Bitmap.CompressFormat.PNG, 100, baos);
-            //baos.close();
-            textView.setText(tmpFileName);
-            Log.d(TAG, "camera tmpFileName: " + tmpFileName +
-                    ", bmp size: " + myBitmap.getByteCount() + " bytes");
 
-            imgView.setImageBitmap((myBitmap));
+            pngPathName = saveImagePNGFile(myBitmap);
+            textView.setText(pngPathName);
+            Log.d(TAG,  "camera saved file: " + pngPathName +
+                        ", size: " + myBitmap.getByteCount() + " bytes");
+
+            imgView.setImageBitmap(myBitmap);
         }
         catch (Exception e)
         {
-            e.printStackTrace();
             // TODO: handle exception
+            e.printStackTrace();
         }
-        //myBitmap = ivPicture.setImageBitmap(myBitmap);
-        //ivPicture.setImageBitmap(Utils.getRoundedShape(myBitmap));
     }
 
     private Bitmap resize(Bitmap image, int maxWidth, int maxHeight) {
