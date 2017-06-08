@@ -191,14 +191,22 @@ public class MainActivity extends AppCompatActivity
         if (data!= null)
         {
             String selectFilePath = ImageFilePath.getPath(this.getBaseContext(), selectedImage);
-            Log.d(TAG, "selectFilePath: " + selectFilePath);
-            testBMP = ImgFunction.getOriententionBitmap(selectFilePath);
-            testBMP = resize(testBMP, IMG_WIDTH, IMG_WIDTH);
+            //Log.d(TAG, "selectFilePath: " + selectFilePath);
 
+            //testBMP = ImgFunction.getOriententionBitmap(selectFilePath);
+            int degree = ImgFunction.getOrientention(selectFilePath);
+            testBMP = ImgFunction.resizeBitmap(selectedImage, this.getBaseContext());
+            testBMP = ImgFunction.rotateImage(testBMP, degree);
+
+            int fileSize = ImgFunction.sizeOf(testBMP);
+            Log.w(TAG,  "selectFilePath: " + selectFilePath + ", degree: " + degree +
+                        ", BMP size: " + fileSize + " bytes.");
+
+            testBMP = resize(testBMP, IMG_WIDTH, IMG_WIDTH);
             pngPathName = saveImagePNGFile(testBMP);
 
             Log.d(TAG, "photo saved file: " + pngPathName +
-                    ", size: " + testBMP.getByteCount() + " bytes");
+                    ", size: " + ImgFunction.sizeOf(testBMP) + " bytes");
             textView.setText(pngPathName);
             imgView.setImageBitmap(testBMP);
         }
