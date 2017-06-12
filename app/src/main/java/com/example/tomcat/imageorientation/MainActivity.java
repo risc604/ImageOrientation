@@ -140,24 +140,24 @@ public class MainActivity extends AppCompatActivity
                         //這裡item是根據選擇的方式，
                         // 在items數據裡面定義了兩種方式，拍照的下標為1所以就調用拍照方法
                         switch (which)
-                        {
-                            case ALBUM_PHOTO:
-                                Intent getImage = new Intent(Intent.ACTION_GET_CONTENT);
-                                getImage.addCategory(Intent.CATEGORY_OPENABLE);
-                                getImage.setType("image/*");
-                                startActivityForResult(getImage, ALBUM_PHOTO);
-                                break;
+                    {
+                        case ALBUM_PHOTO:
+                            Intent getImage = new Intent(Intent.ACTION_GET_CONTENT);
+                            getImage.addCategory(Intent.CATEGORY_OPENABLE);
+                            getImage.setType("image/*");
+                            startActivityForResult(getImage, ALBUM_PHOTO);
+                            break;
 
-                            case CAMERA_PHOTO:
-                                Intent getCamera = new Intent("android.media.action.IMAGE_CAPTURE");
-                                startActivityForResult(getCamera, CAMERA_PHOTO);
-                                break;
+                        case CAMERA_PHOTO:
+                            Intent getCamera = new Intent("android.media.action.IMAGE_CAPTURE");
+                            startActivityForResult(getCamera, CAMERA_PHOTO);
+                            break;
 
-                            default:
-                                Log.e(TAG, "Error!! no get photo method.");
-                                break;
+                        default:
+                            Log.e(TAG, "Error!! no get photo method.");
+                            break;
 
-                        }
+                    }
                     }
                 }).create();
         dlg.show();
